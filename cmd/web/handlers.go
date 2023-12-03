@@ -1,48 +1,100 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"strconv"
+
+	"snippetbox.m54h.dev/internal/models"
 )
 
-func home(w http.ResponseWriter, r *http.Request) {
+func (app *application) home(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
-		http.NotFound(w, r)
+		app.notFound(w)
 		return
 	}
+
+	snippets, err := app.snippets.Latest()
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
 	files := []string{
 		"./ui/html/base.tmpl.html",
 		"./ui/html/pages/home.tmpl",
 		"./ui/html/partials/nav.tmpl",
 	}
+
 	ts, err := template.ParseFiles(files...)
 	if err != nil {
-		log.Println(err.Error())
-		http.Error(w, "Internal Server Error", 500)
+		app.serverError(w, err)
+		return
 	}
-	err = ts.ExecuteTemplate(w, "base", nil)
+
+	data := &templateData{
+		Snippets: snippets,
+	}
+
+	err = ts.ExecuteTemplate(w, "base", data)
 	if err != nil {
-		log.Println(err.Error())
-		http.Error(w, "Internal Server Error", 500)
+		app.serverError(w, err)
 	}
 }
-func snippetView(w http.ResponseWriter, r *http.Request) {
+
+func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil || id < 1 {
-		http.NotFound(w, r)
+		app.notFound(w)
 		return
 	}
-	fmt.Fprintf(w, "Display a specific snippet with ID %d... ", id)
-	// w.Write([]byte("Display a specific snippet..."))
+
+	snippet, err := app.snippets.Get(id)
+	if err != nil {
+		if errors.Is(err, models.ErrNoRecord) {
+			app.notFound(w)
+		} else {
+			app.serverError(w, err)
+		}
+		return
+	}
+	files := []string{
+		"./ui/html/base.tmpl.html",
+		"./ui/html/partials/nav.tmpl",
+		"./ui/html/pages/view.tmpl",
+	}
+
+	ts, err := template.ParseFiles(files...)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+
+	data := &templateData{
+		Snippet: snippet,
+	}
+
+	err = ts.ExecuteTemplate(w, "base", data)
+	if err != nil {
+		app.serverError(w, err)
+	}
 }
-func snippetCreate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.Header().Set("Allow", "POST")
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+
+func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		app.clientError(w, http.StatusMethodNotAllowed)
 		return
 	}
-	w.Write([]byte("Create a new snippet..."))
+	title := "O snail"
+	content := "O snail\nClimb Mount Fuji,|nBut slowly, lsowly!\n\n- Kobayashi Issa"
+	expires := 7
+	id, err := app.snippets.Insert(title, content, expires)
+	if err != nil {
+		app.serverError(w, err)
+		return
+	}
+	http.Redirect(w, r, fmt.Sprintf("/snippet/view?id=%d", id), http.StatusSeeOther)
 }
