@@ -13,10 +13,10 @@ func (app *application) routes() http.Handler {
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
 	router.Handle("http.MethodGet", "/static/*filepath", http.StripPrefix("/static", fileServer))
 
-	router.HandleFunc("/", app.home)
-	router.HandleFunc("/snippet/view", app.snippetView)
-	router.HandleFunc("/snippet/create", app.snippetCreate)
-	router.HandleFunc("/snippet/create", app.SnippetCreatePost)
+	router.HandleFunc(http.MethodGet, "/", app.home)
+	router.HandleFunc(http.MethodGet, "/snippet/view", app.snippetView)
+	router.HandleFunc(http.MethodGet, "/snippet/create", app.snippetCreate)
+	router.HandleFunc(http.MethodPost, "/snippet/create", app.snippetCreatePost)
 
 	standard := alice.New(app.recoverPanic, app.logRequest, secureHeaders)
 	return standard.Then(router)
