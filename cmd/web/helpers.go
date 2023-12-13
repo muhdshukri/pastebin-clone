@@ -11,6 +11,13 @@ import (
 	"github.com/go-playground/form/v4"
 )
 
+func (app *application) newTemplateData(r *http.Request) *templateData {
+	return &templateData{
+		CurrentYear: time.Now().Year(),
+		Flash:       app.sessionManager.PopString(r.Context(), "flash"),
+	}
+}
+
 func (app *application) decodePostForm(r *http.Request, dst any) error {
 	err := r.ParseForm()
 	if err != nil {
@@ -64,10 +71,4 @@ func (app *application) render(w http.ResponseWriter, status int, page string, d
 	w.WriteHeader(status)
 
 	buf.WriteTo(w)
-}
-
-func (app *application) newTemplateData(r *http.Request) *templateData {
-	return &templateData{
-		CurrentYear: time.Now().Year(),
-	}
 }
