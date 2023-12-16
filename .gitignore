@@ -7,3 +7,4 @@ cmd/tmp .
 .air.toml
 *.toml
 tls/
+cmd/web/tmp/
