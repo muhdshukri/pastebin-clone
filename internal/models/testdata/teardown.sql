@@ -1,1 +1,2 @@
-DROPTABLEusers;DROPTABLEsnippets;
+DROP TABLE users;
+DROP TABLE snippets;
